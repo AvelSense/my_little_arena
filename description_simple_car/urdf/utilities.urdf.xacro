@@ -1,0 +1,59 @@
+<?xml version="1.0"?>
+<xacro:macros xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- ///////////////////////////////////////////////////////////////// -->
+  <!-- //////////  SIMPLE MASS WITH NEGLIGIBLE INERTIA   /////////////// -->
+  <!-- ///////////////////////////////////////////////////////////////// -->
+  <xacro:macro name="inertial_null" params="mass">
+    <inertial>
+      <mass value="${mass}" />
+      <inertia ixx="1e-3" ixy="0.0" ixz="0.0"
+               iyy="1e-3" iyz="0.0"
+               izz="1e-3" />
+    </inertial>
+  </xacro:macro>
+
+  <!-- ///////////////////////////////////////////////////////////////// -->
+  <!-- ////////  INERTIA OF A SIMPLE BOX OF CONSTANT DENSITY   ///////// -->
+  <!-- ///////////////////////////////////////////////////////////////// -->
+  <xacro:macro name="inertial_box" params="mass length width height">
+    <inertial>
+      <mass value="${mass}" />
+      <inertia ixx="${(1/12) * mass * (width**2 + height**2)}"
+               ixy="0.0" ixz="0.0"
+               iyy="${(1/12) * mass * (length**2 + height**2)}"
+               iyz="0.0"
+               izz="${(1/12) * mass * (length**2 + width**2)}"
+      />
+    </inertial>
+  </xacro:macro>
+
+
+  <!-- ///////////////////////////////////////////////////////////////// -->
+  <!-- ////  QUICKLY GENERATE SIMPLE SHAPES (BOX, CYLINDER, ...)  ////// -->
+  <!-- ///////////////////////////////////////////////////////////////// -->
+  <xacro:macro name="simple_shape" params="color mass mu:=-1 kp:=-1 kd:=-1 *origin *shape *inertial">
+      <visual>
+        <xacro:insert_block name="origin"/>
+        <geometry>
+          <xacro:insert_block name="shape" />
+        </geometry>
+        <material name="${color}"/>
+      </visual>
+
+      <collision>
+        <xacro:insert_block name="origin"/>
+        <geometry>
+          <xacro:insert_block name="shape" />
+        </geometry>
+        <xacro:if value="${mu!=-1 and kp!=-1 and kd!=-1}">
+          <contact_coefficients mu="${mu}" kp="${kp}" kd="${kd}"/>
+<!--          <contact_coefficients mu="0.8" kp="200" kd="200"/>-->
+        </xacro:if>
+      </collision>
+
+      <xacro:insert_block name="inertial"/>
+  </xacro:macro>
+
+
+</xacro:macros>

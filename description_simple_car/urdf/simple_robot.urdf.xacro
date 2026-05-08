@@ -1,0 +1,135 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="simple_vehicle">
+  <xacro:include filename="$(find description_simple_car)/urdf/utilities.urdf.xacro" />
+
+  <!-- ///////////////////////////////////////////////////////////////// -->
+  <!-- ////////                  PROPERTIES                    ///////// -->
+  <!-- ///////////////////////////////////////////////////////////////// -->
+
+  <xacro:property name="body_mass" value="100" />
+  <xacro:property name="body_width" value="0.6" />
+  <xacro:property name="body_length" value="1" />
+  <xacro:property name="body_height" value="0.3" />
+  <xacro:property name="wheel_mass" value="10" />
+  <xacro:property name="wheel_length" value="0.1" />
+  <xacro:property name="wheel_diameter" value="0.5" />
+  <xacro:property name="caster_support_length" value="0.05" />
+  <xacro:property name="caster_support_diameter" value="0.05" />
+  <xacro:property name="caster_length" value="0.05" />
+  <xacro:property name="caster_diameter" value="0.15" />
+
+  <!-- ///////////////////////////////////////////////////////////////// -->
+  <!-- ////////                  MATERIALS                     ///////// -->
+  <!-- ///////////////////////////////////////////////////////////////// -->
+
+  <material name="black">
+    <color rgba="0.1 0.1 0.1 0.9"/>
+  </material>
+  <material name="blue">
+    <color rgba="0.3 0.3 0.8 0.8"/>
+  </material>
+  <material name="red">
+    <color rgba="0.8 0.1 0.1 1.0"/>
+  </material>
+  <material name="green">
+    <color rgba="0.1 0.8 0.1 1.0"/>
+  </material>
+
+  <!-- ///////////////////////////////////////////////////////////////// -->
+  <!-- ////////                  BODY                          ///////// -->
+  <!-- ///////////////////////////////////////////////////////////////// -->
+
+  <link name="body">
+    <xacro:simple_shape color="black" mass="${body_mass}">
+      <origin/>
+      <box size="${body_length} ${body_width} ${body_height}"/>
+      <xacro:inertial_box mass="${body_mass}" length="${body_length}" width="${body_width}" height="${body_height}"/>
+    </xacro:simple_shape>
+  </link>
+
+  <!-- ///////////////////////////////////////////////////////////////// -->
+  <!-- ////////                  WHEELS                        ///////// -->
+  <!-- ///////////////////////////////////////////////////////////////// -->
+
+  <!-- /////////////////////   Right Wheel  //////////////////////////// -->
+  <joint name="joint_body_to_right_wheel" type="continuous">
+    <parent link="body"/>
+    <child link="wheel_right"/>
+    <origin xyz="${-body_length/3} ${-body_width/2} ${(body_height-wheel_diameter)/2}" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <!-- effort = max torque (N·m), currently ignored because we use 'velocity' command interface -->
+    <!-- velocity = max rad/s — this is what actually gets enforced when using 'velocity' command interface -->
+    <limit effort="10.0" velocity="1000"/>
+  </joint>
+
+  <link name="wheel_right">
+    <xacro:simple_shape color="green" mass="${wheel_mass}" mu="0.8" kp="200" kd="200">
+      <origin xyz="0 ${-wheel_length/2} 0" rpy="${pi/2} 0 0"/>
+      <cylinder length="${wheel_length}" radius="${wheel_diameter/2}"/>
+      <xacro:inertial_null mass="${wheel_mass}"/>
+    </xacro:simple_shape>
+  </link>
+
+  <!-- /////////////////////   Left Wheel  //////////////////////////// -->
+  <joint name="joint_body_to_left_wheel" type="continuous">
+    <parent link="body"/>
+    <child link="wheel_left"/>
+    <origin xyz="${-body_length/3} ${body_width/2} ${(body_height-wheel_diameter)/2}" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <!-- effort = max torque (N·m), currently ignored because we use 'velocity' command interface -->
+    <!-- velocity = max rad/s — this is what actually gets enforced when using 'velocity' command interface -->
+    <limit effort="10.0" velocity="1000"/>
+  </joint>
+
+  <link name="wheel_left">
+    <xacro:simple_shape color="red" mass="${wheel_mass}" mu="0.8" kp="200" kd="200">
+      <origin xyz="0 ${wheel_length/2} 0" rpy="${-pi/2} 0 0"/>
+      <cylinder length="${wheel_length}" radius="${wheel_diameter/2}"/>
+      <xacro:inertial_null mass="${wheel_mass}"/>
+    </xacro:simple_shape>
+  </link>
+
+  <!-- ///////////////////////////////////////////////////////////////// -->
+  <!-- ////////               FRONT CASTER                     ///////// -->
+  <!-- ///////////////////////////////////////////////////////////////// -->
+
+  <!-- ///////////////////   Actuated support  ///////////////////////// -->
+  <joint name="joint_body_to_front_caster_support" type="revolute">
+    <parent link="body"/>
+    <child link="front_caster_support"/>
+    <origin xyz="${body_length/3} 0 ${-body_height/2}" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="1000.0" lower="${-pi/4}" upper="${pi/4}" velocity="0.5"/>
+  </joint>
+
+  <link name="front_caster_support">
+    <xacro:simple_shape color="blue" mass="0.1">
+      <origin xyz="0 0 ${-caster_support_length/2}" rpy="0 0 0"/>
+      <cylinder length="${caster_support_length}" radius="${caster_support_diameter/2}"/>
+      <xacro:inertial_null mass="0.1"/>
+    </xacro:simple_shape>
+  </link>
+
+  <!-- ///////////////////     Free Wheel     ////////////////////////// -->
+  <joint name="joint_caster_support_to_wheel" type="continuous">
+    <parent link="front_caster_support"/>
+    <child link="wheel_caster"/>
+    <origin xyz="0 0 ${-caster_support_length -caster_diameter/2}" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+
+  <link name="wheel_caster">
+    <xacro:simple_shape color="blue" mass="0.1" mu="0.8" kp="200" kd="200">
+      <origin xyz="0 0 0" rpy="${-pi/2} 0 0"/>
+      <cylinder length="${caster_length}" radius="${caster_diameter/2}"/>
+      <xacro:inertial_null mass="0.1"/>
+    </xacro:simple_shape>
+  </link>
+
+
+  <!-- ///////////////////////////////////////////////////////////////// -->
+  <!-- ////////              ROS2 CONTROL                      ///////// -->
+  <!-- ///////////////////////////////////////////////////////////////// -->
+  <xacro:include filename="ros2_control.urdf.xacro"/>
+
+</robot>

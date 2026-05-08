@@ -1,0 +1,30 @@
+controller_manager:
+  ros__parameters:
+    update_rate: 10  # Hz
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    controller_wheels:
+      type: effort_controllers/JointGroupEffortController
+
+    controller_caster:
+      type: position_controllers/JointGroupPositionController
+
+joint_state_broadcaster:
+  ros__parameters:
+    frame_id: "body"
+    use_local_topics: false
+    extra_joints:
+      - joint_caster_support_to_wheel
+
+controller_wheels:
+  ros__parameters:
+    joints:
+      - joint_body_to_right_wheel
+      - joint_body_to_left_wheel
+
+controller_caster:
+  ros__parameters:
+    joints:
+      - joint_body_to_front_caster_support
