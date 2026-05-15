@@ -7,7 +7,6 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 
 from launch_ros.actions import Node
 
-
 # ros2 topic pub /controller_caster/commands std_msgs/msg/Float64MultiArray "data:
 # - 0.5
 # "
@@ -45,9 +44,9 @@ def generate_launch_description():
     model_arg = DeclareLaunchArgument(name='model', default_value=default_model_path,
                                       description="Absolute path to robot urdf file")
     ld.add_action(model_arg)
-    model_arg = DeclareLaunchArgument(name='controllers', default_value=default_controllers_path,
+    controllers_arg = DeclareLaunchArgument(name='controllers_arg', default_value=default_controllers_path,
                                       description="Absolute path to controllers YAML file")
-    ld.add_action(model_arg)
+    ld.add_action(controllers_arg)
     world_arg = DeclareLaunchArgument(name='world', default_value=default_world_file,
                                       description="Absolute path to world sdf file")
     ld.add_action(world_arg)
@@ -118,13 +117,15 @@ def generate_launch_description():
     ##############################################################################################
     ######             Spawn controllers, including joint state broadcaster                #######
     ##############################################################################################
-    # control_node= Node(
-    #     package="controller_manager",
-    #     executable="ros2_control_node",
-    #     parameters=[robot_description, LaunchConfiguration('controllers')],
-    #     output="both",
-    # )
-    #
+    # Only on real hardware, not in simulation, as the GazeboSimROS2ControlPlugin already starts a controller_manager with the specified controllers.
+    control_node= Node(
+        package="controller_manager",
+        executable="ros2_control_node",
+        parameters=[robot_description, LaunchConfiguration('controllers_arg')],
+        output="both",
+    )
+    ld.add_action(control_node)
+    
     spawner_jsb = Node(
         package="controller_manager",
         executable="spawner",

@@ -1,0 +1,20 @@
+<library path="description_simple_car">
+  <class name="description_simple_car/PwmWheelActuator"
+         type="pwm_wheel_actuator::PwmWheelActuator"
+         base_class_type="hardware_interface::ActuatorInterface">
+    <description>
+      Controls a DC motor using PWM signals. 
+      Uses 1 command interface (effort) and 1 state interfaces (position).
+      The example is the starting point to implement a hardware interface.
+    </description>
+  </class>
+  <class name="description_simple_car/PwmServoActuator"
+         type="pwm_servo_actuator::PwmServoActuator"
+         base_class_type="hardware_interface::ActuatorInterface">
+    <description>
+      Controls a servo motor using PWM signals. 
+      Uses 1 command interface (position) and 1 state interface (position).
+      The example is the starting point to implement a hardware interface for servo motors.
+    </description>
+  </class>
+</library>

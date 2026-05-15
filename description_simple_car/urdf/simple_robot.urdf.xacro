@@ -130,6 +130,6 @@
   <!-- ///////////////////////////////////////////////////////////////// -->
   <!-- ////////              ROS2 CONTROL                      ///////// -->
   <!-- ///////////////////////////////////////////////////////////////// -->
-  <xacro:include filename="ros2_control.urdf.xacro"/>
+  <xacro:include filename="ros2_control_real.urdf.xacro"/>
 
 </robot>

@@ -3,17 +3,26 @@
 <package format="3">
   <name>description_simple_car</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="matth@todo.todo">matth</maintainer>
-  <license>TODO: License declaration</license>
+  <description>Simple car description: URDF and ros2_control layer</description>
+  <maintainer email="223842537+AvelSense@users.noreply.github.com">AvelSense</maintainer>
+  <license>MIT</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
-  <test_depend>ament_lint_auto</test_depend>
-  <test_depend>ament_lint_common</test_depend>
+  <depend>hardware_interface</depend>
+  <depend>pluginlib</depend>
+  <depend>rclcpp</depend>
+  <depend>rclcpp_lifecycle</depend>
+  <!-- <depend>gz_ros2_control</depend> -->
+  <!-- <depend>ros2_controllers</depend> -->
 
-  <depend>gz_ros2_control</depend>
-  <depend>ros2_controllers</depend>
+  <exec_depend>rviz2</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+  <exec_depend>controller_manager</exec_depend>
+  <exec_depend>joint_state_broadcaster</exec_depend>
+
+  <test_depend>ament_add_gmock</test_depend>
+  <test_depend>hardware_interface</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

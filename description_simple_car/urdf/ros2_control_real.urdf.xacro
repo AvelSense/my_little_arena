@@ -1,0 +1,57 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="robot">
+
+  <ros2_control name="back_wheel_right" type="actuator">
+
+    <hardware>
+      <plugin>description_simple_car/PwmWheelActuator</plugin>
+        <param name="dc_motor_operating_voltage">24.</param>
+        <param name="dc_motor_stall_current">10.3</param>
+        <param name="dc_motor_no_load_current">0.395</param>
+        <param name="dc_motor_no_load_speed">680.</param>
+        <param name="gear_speed_division">380.</param>
+        <param name="gear_speed_division_efficiency">0.52</param>
+        <param name="enc_counts_per_rev">10000.</param>
+    </hardware>
+
+    <joint name="joint_body_to_right_wheel">
+      <command_interface name="effort"/>
+      <state_interface name="position"/>
+    </joint>
+  </ros2_control>
+  
+  <ros2_control name="back_wheel_left" type="actuator">
+
+    <hardware>
+      <plugin>description_simple_car/PwmWheelActuator</plugin>
+        <param name="dc_motor_operating_voltage">24.</param>
+        <param name="dc_motor_stall_current">10.3</param>
+        <param name="dc_motor_no_load_current">0.395</param>
+        <param name="dc_motor_no_load_speed">680.</param>
+        <param name="gear_speed_division">380.</param>
+        <param name="gear_speed_division_efficiency">0.52</param>
+        <param name="enc_counts_per_rev">10000.</param>
+    </hardware>
+
+    <joint name="joint_body_to_left_wheel">
+      <command_interface name="effort"/>
+      <state_interface name="position"/>
+    </joint>
+  </ros2_control>
+
+  <ros2_control name="front_caster" type="actuator">
+    <hardware>
+      <plugin>description_simple_car/PwmServoActuator</plugin>
+        <param name="angle_min">${-30*pi/180}</param>
+        <param name="angle_max">${30*pi/180}</param>
+        <param name="pwm_min">1300</param>
+        <param name="pwm_max">1700</param>
+        <param name="pwm_neutral">1500</param>
+    </hardware>
+
+    <joint name="joint_body_to_front_caster_support">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+    </joint>
+  </ros2_control>
+</robot>
