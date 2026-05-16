@@ -1,5 +1,5 @@
 <library path="description_simple_car">
-  <class name="description_simple_car/PwmWheelActuator"
+  <class name="simple_hardware_interfaces/PwmWheelActuator"
          type="pwm_wheel_actuator::PwmWheelActuator"
          base_class_type="hardware_interface::ActuatorInterface">
     <description>
@@ -8,7 +8,7 @@
       The example is the starting point to implement a hardware interface.
     </description>
   </class>
-  <class name="description_simple_car/PwmServoActuator"
+  <class name="simple_hardware_interfaces/PwmServoActuator"
          type="pwm_servo_actuator::PwmServoActuator"
          base_class_type="hardware_interface::ActuatorInterface">
     <description>

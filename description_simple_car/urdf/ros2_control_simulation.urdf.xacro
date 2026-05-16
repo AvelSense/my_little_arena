@@ -6,14 +6,10 @@
     </hardware>
     <joint name="joint_body_to_right_wheel">
       <command_interface name="effort"/>
-      <state_interface name="effort"/>
-      <state_interface name="velocity"/>
       <state_interface name="position"/>
     </joint>
     <joint name="joint_body_to_left_wheel">
       <command_interface name="effort"/>
-      <state_interface name="effort"/>
-      <state_interface name="velocity"/>
       <state_interface name="position"/>
     </joint>
     <joint name="joint_body_to_front_caster_support">
@@ -23,7 +19,6 @@
   </ros2_control>
 
   <gazebo>
-    <!-- <plugin filename="libgz_ros2_control-system.so" name="gz_ros2_control::GazeboSimROS2ControlPlugin"> -->
     <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
       <parameters>$(find description_simple_car)/config/controllers.yaml</parameters>
       <controller_manager_name>controller_manager</controller_manager_name>

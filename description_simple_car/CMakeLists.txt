@@ -19,16 +19,16 @@ foreach(Dependency IN ITEMS ${THIS_PACKAGE_INCLUDE_DEPENDS})
 endforeach()
 
 add_library(
-  description_simple_car
+  simple_hardware_interfaces
   SHARED
   hardware/PwmWheelActuator.cpp
   hardware/PwmServoActuator.cpp
 )
 ament_target_dependencies(
-  description_simple_car
+  simple_hardware_interfaces
   ${THIS_PACKAGE_INCLUDE_DEPENDS}
 )
-target_include_directories(description_simple_car PUBLIC
+target_include_directories(simple_hardware_interfaces PUBLIC
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/hardware/include>
   $<INSTALL_INTERFACE:include/description_simple_car>
 )
@@ -37,7 +37,7 @@ pluginlib_export_plugin_description_file(hardware_interface description_simple_c
 
 # INSTALL
 install(
-  TARGETS description_simple_car
+  TARGETS simple_hardware_interfaces
   DESTINATION lib
 )
 install(

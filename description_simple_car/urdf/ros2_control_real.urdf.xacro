@@ -4,7 +4,7 @@
   <ros2_control name="back_wheel_right" type="actuator">
 
     <hardware>
-      <plugin>description_simple_car/PwmWheelActuator</plugin>
+      <plugin>simple_hardware_interfaces/PwmWheelActuator</plugin>
         <param name="dc_motor_operating_voltage">24.</param>
         <param name="dc_motor_stall_current">10.3</param>
         <param name="dc_motor_no_load_current">0.395</param>
@@ -23,7 +23,7 @@
   <ros2_control name="back_wheel_left" type="actuator">
 
     <hardware>
-      <plugin>description_simple_car/PwmWheelActuator</plugin>
+      <plugin>simple_hardware_interfaces/PwmWheelActuator</plugin>
         <param name="dc_motor_operating_voltage">24.</param>
         <param name="dc_motor_stall_current">10.3</param>
         <param name="dc_motor_no_load_current">0.395</param>
@@ -41,7 +41,7 @@
 
   <ros2_control name="front_caster" type="actuator">
     <hardware>
-      <plugin>description_simple_car/PwmServoActuator</plugin>
+      <plugin>simple_hardware_interfaces/PwmServoActuator</plugin>
         <param name="angle_min">${-30*pi/180}</param>
         <param name="angle_max">${30*pi/180}</param>
         <param name="pwm_min">1300</param>
