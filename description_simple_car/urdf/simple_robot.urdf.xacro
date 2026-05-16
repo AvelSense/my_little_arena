@@ -5,6 +5,7 @@
   <!-- ///////////////////////////////////////////////////////////////// -->
   <!-- ////////                  PROPERTIES                    ///////// -->
   <!-- ///////////////////////////////////////////////////////////////// -->
+  <xacro:arg name="use_sim" default="false"/>
 
   <xacro:property name="body_mass" value="100" />
   <xacro:property name="body_width" value="0.6" />
@@ -130,6 +131,11 @@
   <!-- ///////////////////////////////////////////////////////////////// -->
   <!-- ////////              ROS2 CONTROL                      ///////// -->
   <!-- ///////////////////////////////////////////////////////////////// -->
-  <xacro:include filename="ros2_control_real.urdf.xacro"/>
+  <xacro:if value="$(arg use_sim)">
+    <xacro:include filename="ros2_control_simulation.urdf.xacro"/>
+  </xacro:if>
+  <xacro:unless value="$(arg use_sim)">
+    <xacro:include filename="ros2_control_real.urdf.xacro"/>
+  </xacro:unless>
 
 </robot>

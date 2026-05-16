@@ -13,8 +13,8 @@
   <depend>pluginlib</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_lifecycle</depend>
-  <!-- <depend>gz_ros2_control</depend> -->
-  <!-- <depend>ros2_controllers</depend> -->
+  <depend>gz_ros2_control</depend>
+  <depend>ros2_controllers</depend>
 
   <exec_depend>rviz2</exec_depend>
   <exec_depend>robot_state_publisher</exec_depend>

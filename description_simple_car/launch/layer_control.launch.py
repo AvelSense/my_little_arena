@@ -4,6 +4,7 @@ from launch.event_handlers import OnProcessExit
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, TextSubstitution, Command, FindExecutable
 from launch_ros.substitutions import FindPackageShare
 from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.conditions import IfCondition, UnlessCondition
 
 from launch_ros.actions import Node
 
@@ -54,11 +55,21 @@ def generate_launch_description():
                                      description='Absolute path to rviz config file')
     ld.add_action(rviz_arg)
 
+    use_sim = DeclareLaunchArgument(
+        'use_sim',
+        default_value='false',
+        description='Use Gazebo simulation if true, real hardware if false'
+    )
+    ld.add_action(use_sim)
+
     ##############################################################################################
     ######         Convert xacro to URDF, load URDF and launch robot publisher             #######
     ##############################################################################################
-    robot_description_content = Command([PathJoinSubstitution([FindExecutable(name="xacro")]), " ",
-                                         LaunchConfiguration('model')])
+    robot_description_content = Command([
+        PathJoinSubstitution([FindExecutable(name='xacro')]), ' ',
+        LaunchConfiguration('model'),
+        ' use_sim:=', LaunchConfiguration('use_sim'),  # passed to xacro:arg
+    ])
     robot_description = {"robot_description": robot_description_content}
 
     robot_state_pub_node = Node(
@@ -66,7 +77,7 @@ def generate_launch_description():
         executable="robot_state_publisher",
         output="both",
         parameters=[robot_description,
-            {'use_sim_time': True},   # use Gazebo clock, not wall clock
+            {'use_sim_time': LaunchConfiguration('use_sim')},   # use Gazebo clock, not wall clock
         ]
     )
     ld.add_action(robot_state_pub_node)
@@ -79,9 +90,10 @@ def generate_launch_description():
             PathJoinSubstitution([FindPackageShare("ros_gz_sim"), "launch", "gz_sim.launch.py"])
         ),
         launch_arguments={"gz_args": [
-            TextSubstitution(text='-r '),  # literal prefix
-            LaunchConfiguration('world'),        # resolved at launch time
+            TextSubstitution(text='-r '),  # start simulation immediately
+            LaunchConfiguration('world'),
         ]}.items(),
+        condition=IfCondition(LaunchConfiguration('use_sim')),
     )
     ld.add_action(gz_sim)
 
@@ -91,6 +103,7 @@ def generate_launch_description():
         executable="parameter_bridge",
         arguments=["/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock"],
         output="screen",
+        condition=IfCondition(LaunchConfiguration('use_sim')),
     )
     ld.add_action(gazebo_bridge)
 
@@ -111,6 +124,7 @@ def generate_launch_description():
             '-Y', '0.0',
         ],
         output='screen',
+        condition=IfCondition(LaunchConfiguration('use_sim')),
     )
     ld.add_action(spawner_robot_sim)
 
@@ -123,6 +137,7 @@ def generate_launch_description():
         executable="ros2_control_node",
         parameters=[robot_description, LaunchConfiguration('controllers_arg')],
         output="both",
+        condition=UnlessCondition(LaunchConfiguration('use_sim')),
     )
     ld.add_action(control_node)
     
@@ -162,7 +177,7 @@ def generate_launch_description():
         name="rviz2",
         output="log",
         arguments=["-d", LaunchConfiguration('rvizconfig')],
-        parameters=[{'use_sim_time': True}],
+        parameters=[{'use_sim_time': LaunchConfiguration('use_sim')}]  # use Gazebo clock, not wall clock
     )
     # Wait for joint_state_broadcaster to be spawned, then start RVIZ
     rviz_wait_for_jsb = RegisterEventHandler(

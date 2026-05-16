@@ -23,7 +23,8 @@
   </ros2_control>
 
   <gazebo>
-    <plugin filename="libgz_ros2_control-system.so" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+    <!-- <plugin filename="libgz_ros2_control-system.so" name="gz_ros2_control::GazeboSimROS2ControlPlugin"> -->
+    <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
       <parameters>$(find description_simple_car)/config/controllers.yaml</parameters>
       <controller_manager_name>controller_manager</controller_manager_name>
     </plugin>
