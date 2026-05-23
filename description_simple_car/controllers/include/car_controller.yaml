@@ -1,0 +1,33 @@
+car_controller:
+
+  steering_left:
+    {
+      type: string,
+      default_value: "steering_left_joint",
+      description: "Name of the front steering left joint (must provide 'position' state and 'position' command interfaces).",
+      read_only: true,
+    }
+
+  steering_right:
+    {
+      type: string,
+      default_value: "steering_right_joint",
+      description: "Name of the front steering right joint (must provide 'position' state and 'position' command interfaces).",
+      read_only: true,
+    }
+
+  propulsion_left:
+    {
+      type: string,
+      default_value: "propulsion_left_joint",
+      description: "Name of the rear propulsion left joint (must provide 'position' state and 'effort' command interfaces).",
+      read_only: true,
+    }
+
+  propulsion_right:
+    {
+      type: string,
+      default_value: "propulsion_right_joint",
+      description: "Name of the rear propulsion right joint (must provide 'position' state and 'effort' command interfaces).",
+      read_only: true,
+    }

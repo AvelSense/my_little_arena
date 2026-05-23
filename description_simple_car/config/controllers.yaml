@@ -11,12 +11,15 @@ controller_manager:
     controller_caster:
       type: position_controllers/JointGroupPositionController
 
+    controller_car:
+      type: simple_car_controller/CarController
+
 joint_state_broadcaster:
   ros__parameters:
     frame_id: "body"
     use_local_topics: false
     extra_joints:
-      - joint_caster_support_to_wheel
+      - joint_caster_support_to_wheel # Published for visualisation but actual state is not measured.
 
 controller_wheels:
   ros__parameters:

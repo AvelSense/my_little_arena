@@ -2,15 +2,23 @@ cmake_minimum_required(VERSION 3.8)
 project(description_simple_car)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  add_compile_options(-Wall -Wextra -Wpedantic)
+  add_compile_options(-Wall -Wextra -Wpedantic -std=c++23)
 endif()
 
 # list dependencies
 set(THIS_PACKAGE_INCLUDE_DEPENDS
-  hardware_interface
+  # For controller
+  controller_interface
+  generate_parameter_library
+  realtime_tools
+  std_srvs
+  # For hardware interface
+  # For both
   pluginlib
-  rclcpp
   rclcpp_lifecycle
+  hardware_interface
+  # For standard ROS2 features
+  rclcpp
 )
 # find dependencies
 find_package(ament_cmake REQUIRED)
@@ -18,6 +26,9 @@ foreach(Dependency IN ITEMS ${THIS_PACKAGE_INCLUDE_DEPENDS})
   find_package(${Dependency} REQUIRED)
 endforeach()
 
+##############################################################################
+#############    Generate custom hardware interfaces plugin      #############
+##############################################################################
 add_library(
   simple_hardware_interfaces
   SHARED
@@ -30,26 +41,68 @@ ament_target_dependencies(
 )
 target_include_directories(simple_hardware_interfaces PUBLIC
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/hardware/include>
-  $<INSTALL_INTERFACE:include/description_simple_car>
+  $<INSTALL_INTERFACE:include>
 )
-
 pluginlib_export_plugin_description_file(hardware_interface description_simple_car.xml)
 
-# INSTALL
+install(
+  DIRECTORY hardware/include/
+  DESTINATION include
+)
 install(
   TARGETS simple_hardware_interfaces
   DESTINATION lib
 )
-install(
-  DIRECTORY hardware/include/
-  DESTINATION include/description_simple_car
+
+##############################################################################
+#################      Generate custom controller plugin    ##################
+##############################################################################
+generate_parameter_library(simple_car_controller_parameters
+  controllers/include/car_controller.yaml
 )
+add_library(
+  simple_car_controller
+  SHARED
+  controllers/car_controller.cpp
+)
+target_include_directories(simple_car_controller PUBLIC
+  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/controllers/include>
+  $<INSTALL_INTERFACE:include/description_simple_car>
+)
+target_link_libraries(simple_car_controller PUBLIC
+                      simple_car_controller_parameters
+                      controller_interface::controller_interface
+                      hardware_interface::hardware_interface
+                      pluginlib::pluginlib
+                      rclcpp::rclcpp
+                      rclcpp_lifecycle::rclcpp_lifecycle
+                      realtime_tools::realtime_tools
+                      ${std_srvs_TARGETS})
+pluginlib_export_plugin_description_file(controller_interface description_simple_car.xml)
+
+install(
+  DIRECTORY controllers/include
+  DESTINATION include
+)
+install(
+  TARGETS simple_car_controller
+  DESTINATION lib
+)
+
+
+##############################################################################
+#################             Gather resources              ##################
+##############################################################################
 
 install(
   DIRECTORY config launch meshes rviz urdf worlds
   DESTINATION share/${PROJECT_NAME}
 )
 
+
+##############################################################################
+#################                  Testing                  ##################
+##############################################################################
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights

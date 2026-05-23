@@ -17,4 +17,11 @@
       The example is the starting point to implement a hardware interface for servo motors.
     </description>
   </class>
+  <class name="simple_car_controller/CarController"
+         type="simple_car_controller::CarController"
+         base_class_type="controller_interface::ControllerInterface">
+    <description>
+      Car controller plugin for simple car.
+    </description>
+  </class>
 </library>

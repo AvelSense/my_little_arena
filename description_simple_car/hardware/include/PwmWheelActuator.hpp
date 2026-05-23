@@ -18,8 +18,8 @@
 #include "rclcpp_lifecycle/state.hpp"
 #include "hardware_interface/actuator_interface.hpp"
 
-#include "description_simple_car/wheel.hpp"
-#include "description_simple_car/pwm_motor.hpp"
+#include "wheel.hpp"
+#include "pwm_motor.hpp"
 
 namespace pwm_wheel_actuator{
 

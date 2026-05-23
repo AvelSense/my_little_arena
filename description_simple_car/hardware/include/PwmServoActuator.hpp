@@ -18,7 +18,7 @@
 #include "rclcpp_lifecycle/state.hpp"
 #include "hardware_interface/actuator_interface.hpp"
 
-#include "description_simple_car/pwm_servo.hpp"
+#include "pwm_servo.hpp"
 
 namespace pwm_servo_actuator{
 
