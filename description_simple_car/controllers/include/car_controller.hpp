@@ -5,26 +5,32 @@
 
 #include <string>
 #include <vector>
+#include <optional>
 
-#include "controller_interface/controller_interface.hpp"
+#include "controller_interface/chainable_controller_interface.hpp"
 #include "rclcpp_lifecycle/state.hpp"
-#include "rclcpp/subscription.hpp"
+#include "realtime_tools/realtime_publisher.hpp"
 #include "realtime_tools/realtime_thread_safe_box.hpp"
 #include "geometry_msgs/msg/twist.hpp"
 
 namespace simple_car_controller
 {
-enum order_interfaces
+enum num_hardware_interfaces
 {
     STEERING_LEFT,
     STEERING_RIGHT,
     PROPULSION_LEFT,
     PROPULSION_RIGHT,
 };
-
-class CarController : public controller_interface::ControllerInterface
+enum num_ref_interfaces
 {
-using CmdType = geometry_msgs::msg::Twist;
+    VELOCITY,
+    TURNING_RADIUS,
+};
+
+class CarController : public controller_interface::ChainableControllerInterface
+{
+using CmdType = geometry_msgs::msg::TwistStamped;
 public:
   CarController();
 
@@ -33,6 +39,13 @@ public:
   controller_interface::InterfaceConfiguration command_interface_configuration() const override;
 
   controller_interface::InterfaceConfiguration state_interface_configuration() const override;
+
+  // Chainable controller replaces update() with the following two functions
+  controller_interface::return_type update_reference_from_subscribers(
+    const rclcpp::Time & time, const rclcpp::Duration & period) override;
+
+  controller_interface::return_type update_and_write_commands(
+    const rclcpp::Time & time, const rclcpp::Duration & period) override;
 
   controller_interface::CallbackReturn on_init() override;
 
@@ -45,12 +58,25 @@ public:
   controller_interface::CallbackReturn on_deactivate(
     const rclcpp_lifecycle::State & previous_state) override;
 
-  controller_interface::return_type update(
-    const rclcpp::Time & time, const rclcpp::Duration & period) override;
-
 protected:
-  void declare_parameters();
-  controller_interface::CallbackReturn read_parameters();
+  std::vector<hardware_interface::CommandInterface> on_export_reference_interfaces() override;
+
+  struct WheelPropulsion
+  {
+    std::reference_wrapper<const hardware_interface::LoanedStateInterface> feedback_position;
+    std::reference_wrapper<hardware_interface::LoanedCommandInterface> command_effort;
+  };
+
+  struct WheelSteering
+  {
+    std::reference_wrapper<const hardware_interface::LoanedStateInterface> feedback_position;
+    std::reference_wrapper<hardware_interface::LoanedCommandInterface> command_position;
+  };
+
+  WheelSteering steering_left_;
+  WheelSteering steering_right_;
+  WheelPropulsion propulsion_left_;
+  WheelPropulsion propulsion_right_;
 
   using Params = car_controller::Params; // defined in car_controller_parameters.hpp
   using ParamListener = car_controller::ParamListener;
@@ -58,17 +84,23 @@ protected:
   std::shared_ptr<ParamListener> param_listener_;
   Params params_;
 
-  std::vector<std::string> command_interface_names_;
-  std::vector<std::string> state_interface_names_;
+  // Timeout to consider commands old
+  rclcpp::Duration cmd_vel_timeout_ = rclcpp::Duration::from_seconds(0.5);
+  rclcpp::Time previous_update_timestamp_{0};
 
-  CmdType commands_in_;
-  void callback_command(const CmdType::SharedPtr msg);
-  rclcpp::Subscription<CmdType>::SharedPtr subscriber_command_;
+  // realtime container for the received velocity command
+  realtime_tools::RealtimeThreadSafeBox<std::optional<CmdType>> rt_box_commands_in_;
+  // save the last reference in case of unable to get value from box
+  std::optional<CmdType> commands_in_; // TODO; custom message type for control input
+  rclcpp::Subscription<CmdType>::SharedPtr subscriber_command_ = nullptr;
 
-  std::vector<double> commands_out_;
-  void set_actuator_commands(const std::vector<double> & commands);
-  
-  std::vector<double> get_states();
+  std::shared_ptr<rclcpp::Publisher<TwistStamped>> publisher_control_output_ = nullptr;
+  std::shared_ptr<realtime_tools::RealtimePublisher<TwistStamped>>
+    rt_publisher_control_output_ = nullptr;
+  geometry_msgs::msg::TwistStamped control_output_message_; // TODO; custom message type for control output
+
+   std::vector<std::string> command_interface_names_;  
+   std::vector<std::string> state_interface_names_;
 };
 }  // namespace simple_car_controller
 
