@@ -1,15 +1,19 @@
 #include "car_controller.hpp"
 
 #include <ranges>
+#include <limits>
+#include <cmath>
+#include <cfloat>
+#include <iostream>
 
 #include "controller_interface/helpers.hpp" 
 #include "hardware_interface/loaned_command_interface.hpp"
+#include "hardware_interface/types/hardware_interface_type_values.hpp"
 #include "rclcpp/logging.hpp"
 #include "rclcpp/qos.hpp"
 
 namespace
 {  // utility, can only be accessed in this file (same as declaring static functions)
-
 
 }  // namespace
 
@@ -36,12 +40,11 @@ controller_interface::CallbackReturn CarController::on_init()
 controller_interface::CallbackReturn CarController::on_configure(
   const rclcpp_lifecycle::State & /*previous_state*/)
 {
-  auto logger = get_node()->get_logger();
 
   // update parameters if they have changed
   if (param_listener_->try_update_params(params_))
   {
-    RCLCPP_INFO(logger, "Parameters were updated");
+    RCLCPP_INFO(get_node()->get_logger(), "Parameters were updated");
   }
 
   try
@@ -52,15 +55,15 @@ controller_interface::CallbackReturn CarController::on_configure(
     const int number_ref_interfaces = 2;
     reference_interfaces_.resize(number_ref_interfaces, std::numeric_limits<double>::quiet_NaN());
 
-    state_interface_names_.push_back(params_.steering_left + '/' + HW_POSITION);
-    state_interface_names_.push_back(params_.steering_right + '/' + HW_POSITION);
-    state_interface_names_.push_back(params_.propulsion_left + '/' + HW_POSITION);
-    state_interface_names_.push_back(params_.propulsion_right + '/' + HW_POSITION);
+    state_interface_names_.push_back(params_.steering_left + '/' + hardware_interface::HW_IF_POSITION);
+    state_interface_names_.push_back(params_.steering_right + '/' + hardware_interface::HW_IF_POSITION);
+    state_interface_names_.push_back(params_.propulsion_left + '/' + hardware_interface::HW_IF_POSITION);
+    state_interface_names_.push_back(params_.propulsion_right + '/' + hardware_interface::HW_IF_POSITION);
 
-    command_interface_names_.push_back(params_.steering_left + '/' + HW_POSITION);
-    command_interface_names_.push_back(params_.steering_right + '/' + HW_POSITION);
-    command_interface_names_.push_back(params_.propulsion_left + '/' + HW_EFFORT);
-    command_interface_names_.push_back(params_.propulsion_right + '/' + HW_EFFORT);
+    command_interface_names_.push_back(params_.steering_left + '/' + hardware_interface::HW_IF_POSITION);
+    command_interface_names_.push_back(params_.steering_right + '/' + hardware_interface::HW_IF_POSITION);
+    command_interface_names_.push_back(params_.propulsion_left + '/' + hardware_interface::HW_IF_EFFORT);
+    command_interface_names_.push_back(params_.propulsion_right + '/' + hardware_interface::HW_IF_EFFORT);
 
     subscriber_command_ = get_node()->create_subscription<CmdType>(
         "~/commands", rclcpp::SystemDefaultsQoS(), 
@@ -69,7 +72,7 @@ controller_interface::CallbackReturn CarController::on_configure(
     // initialize odometry publisher and message
     publisher_control_output_ = get_node()->create_publisher<geometry_msgs::msg::TwistStamped>(
       "~/controller_output", rclcpp::SystemDefaultsQoS());
-    realtime_odometry_publisher_ =
+    rt_publisher_control_output_ =
       std::make_shared<realtime_tools::RealtimePublisher<geometry_msgs::msg::TwistStamped>>(
         publisher_control_output_);
 
@@ -78,7 +81,7 @@ controller_interface::CallbackReturn CarController::on_configure(
   }
   catch (const std::invalid_argument & e)
   {
-    RCLCPP_ERROR(logger, "Failed to configure controller: %s", e.what());
+    RCLCPP_ERROR(get_node()->get_logger(), "Failed to configure controller: %s", e.what());
     return controller_interface::CallbackReturn::ERROR;
   }
   RCLCPP_INFO(get_node()->get_logger(), "configure successful");
@@ -127,18 +130,17 @@ CarController::state_interface_configuration() const
 controller_interface::CallbackReturn CarController::on_activate(
   const rclcpp_lifecycle::State & /*previous_state*/)
 {
-  steering_left_.feedback_position = state_interfaces_[num_hardware_interfaces::STEERING_LEFT];
-  steering_left_.command_position = command_interfaces_[num_hardware_interfaces::STEERING_LEFT];
+  steering_left_.emplace(state_interfaces_[num_hardware_interfaces::STEERING_LEFT],
+  command_interfaces_[num_hardware_interfaces::STEERING_LEFT]);
 
-  steering_right_.feedback_position = state_interfaces_[num_hardware_interfaces::STEERING_RIGHT];
-  steering_right_.command_position = command_interfaces_[num_hardware_interfaces::STEERING_RIGHT];
+  steering_right_.emplace(state_interfaces_[num_hardware_interfaces::STEERING_RIGHT],
+  command_interfaces_[num_hardware_interfaces::STEERING_RIGHT]);
 
-  propulsion_left_.feedback_position = state_interfaces_[num_hardware_interfaces::PROPULSION_LEFT];
-  propulsion_left_.command_effort = command_interfaces_[num_hardware_interfaces::PROPULSION_LEFT];
-  
-  propulsion_right_.feedback_position = state_interfaces_[num_hardware_interfaces::PROPULSION_RIGHT];
-  propulsion_right_.command_effort = command_interfaces_[num_hardware_interfaces::PROPULSION_RIGHT];
+  propulsion_left_.emplace(state_interfaces_[num_hardware_interfaces::PROPULSION_LEFT],
+  command_interfaces_[num_hardware_interfaces::PROPULSION_LEFT]);
 
+  propulsion_right_.emplace(state_interfaces_[num_hardware_interfaces::PROPULSION_RIGHT],
+  command_interfaces_[num_hardware_interfaces::PROPULSION_RIGHT]);
   // Reset commands
   halt();
 
@@ -158,8 +160,6 @@ controller_interface::CallbackReturn CarController::on_deactivate(
 controller_interface::return_type CarController::update_reference_from_subscribers(
   const rclcpp::Time & time, const rclcpp::Duration & /*period*/)
 {
-  auto logger = get_node()->get_logger();
-
   auto rt_box_status = rt_box_commands_in_.try_get();
   if (rt_box_status.has_value())
   {
@@ -178,48 +178,75 @@ controller_interface::return_type CarController::update_reference_from_subscribe
   return controller_interface::return_type::OK;
 }
 
-controller_interface::return_type DiffDriveController::update_and_write_commands(
+bool CarController::fetch_commands_in(double &target_velocity, double &target_turning_radius)
+{
+  target_turning_radius = reference_interfaces_[1];
+  target_velocity = reference_interfaces_[0];
+  const bool res = (std::isfinite(target_velocity) && std::isfinite(target_turning_radius));
+  if (!res){RCLCPP_ERROR(get_node()->get_logger(), "Received invalid commands.");}
+  return res;
+}
+
+bool CarController::fetch_states(double &steering_left_pos, double &steering_right_pos,
+  double &propulsion_left_pos, double &propulsion_right_pos)
+{
+  std::vector<double> states;
+  states.reserve(4);
+  const auto wheels = std::tie(steering_left_, steering_right_, propulsion_left_, propulsion_right_);
+
+  bool res = true;
+  std::apply([&](auto&&... wheel){([&]{
+        const auto & interface = wheel.value().feedback_position.value().get();
+        auto feedback = interface.get_optional();
+        if (feedback.has_value() && std::isfinite(feedback.value()))
+        {
+          res = false;
+          states.push_back(feedback.value());
+        }
+        else
+        {
+          RCLCPP_ERROR(get_node()->get_logger(),
+            "Cannot fetch valid feedback from %s", interface.get_prefix_name().c_str());
+        }
+      }(), ...);},
+    wheels);
+  steering_left_pos    = states[0];
+  steering_right_pos   = states[1];
+  propulsion_left_pos  = states[2];
+  propulsion_right_pos = states[3];
+  return res;
+}
+
+bool CarController::write_commands_out(const double &steering_left, const double &steering_right,
+  const double &propulsion_left, const double &propulsion_right)
+{
+  bool set_command_result = true;
+  set_command_result &= steering_left_.value().command_position.get().set_value(steering_left);
+  set_command_result &= steering_right_.value().command_position.get().set_value(steering_right);
+  set_command_result &= propulsion_left_.value().command_effort.get().set_value(propulsion_left);
+  set_command_result &= propulsion_right_.value().command_effort.get().set_value(propulsion_right);
+
+  if (!set_command_result)
+  {
+    RCLCPP_ERROR(get_node()->get_logger(),
+      "Unable to set the command to one of the command handles!");
+  }
+  return set_command_result;
+}
+
+controller_interface::return_type CarController::update_and_write_commands(
   const rclcpp::Time & time, const rclcpp::Duration & period)
 {
-  auto logger = get_node()->get_logger();
+  double target_turning_radius, target_velocity;
+  if (!fetch_commands_in(target_velocity, target_turning_radius)){return controller_interface::return_type::OK;}
 
-  // command may be limited further by SpeedLimit,
-  // without affecting the stored twist command
-  double target_velocity = reference_interfaces_[0];
-  double target_turning_radius = reference_interfaces_[1];
+  double steering_left_pos, steering_right_pos, propulsion_left_pos, propulsion_right_pos;
+  if (!fetch_states(steering_left_pos, steering_right_pos,propulsion_left_pos, propulsion_right_pos))
+  {return controller_interface::return_type::OK;}
 
-  if (!std::isfinite(target_velocity) || !std::isfinite(target_turning_radius))
-  {
-    // NaNs occur on initialization when the reference interfaces are not yet set
-    return controller_interface::return_type::OK;
-  }
+  double steering_left = 0., steering_right = 0., propulsion_left = 0., propulsion_right = 0.;
 
-  std::vector<double> states;
-  for (const auto & wheel : {steering_left_, steering_right_, propulsion_left_, propulsion_right_})
-  {
-    interface = wheel.feedback_position.get();
-    auto state_op = interface.get_optional();
-    if (!state_op.has_value())
-    {
-      RCLCPP_DEBUG(logger, "Unable to retrieve the data from the feedback interface %s!", wheel.feedback_position.get().get_name());
-      return controller_interface::return_type::OK;
-    }
-    states.push_back(state_op.value());
-  }
-
-  // Set wheels velocities:
-  bool set_command_result = true;
-  for (size_t index = 0; index < static_cast<size_t>(wheels_per_side_); ++index)
-  {
-    set_command_result &=
-      registered_left_wheel_handles_[index].velocity.get().set_value(velocity_left);
-    set_command_result &=
-      registered_right_wheel_handles_[index].velocity.get().set_value(velocity_right);
-  }
-
-  RCLCPP_DEBUG_EXPRESSION(
-    logger, !set_command_result, "Unable to set the command to one of the command handles!");
-
+  write_commands_out(steering_left, steering_right, propulsion_left, propulsion_right);
   return controller_interface::return_type::OK;
 }
 
@@ -247,10 +274,15 @@ void CarController::halt(){
   // Reset commands
   reference_interfaces_[0] = 0.0;
   reference_interfaces_[1] = 0.0;
-  steering_left_.command_position.get().set_value(0.0);
-  steering_right_.command_position.get().set_value(0.0);
-  propulsion_left_.command_effort.get().set_value(0.0);
-  propulsion_right_.command_effort.get().set_value(0.0);
+  bool set_command_result = true;
+  set_command_result &= steering_left_.value().command_position.get().set_value(0.0);
+  set_command_result &= steering_right_.value().command_position.get().set_value(0.0);
+  set_command_result &= propulsion_left_.value().command_effort.get().set_value(0.0);
+  set_command_result &= propulsion_right_.value().command_effort.get().set_value(0.0);
+  
+  RCLCPP_DEBUG_EXPRESSION(
+    get_node()->get_logger(), !set_command_result, "Unable to set the command to one of the command handles!");
+
 }
 
 void CarController::reset(){
@@ -260,6 +292,10 @@ void CarController::reset(){
     std::numeric_limits<double>::quiet_NaN());
   commands_in_.reset();
   rt_box_commands_in_.set(commands_in_);
+  steering_left_.reset();
+  steering_right_.reset();
+  propulsion_left_.reset();
+  propulsion_right_.reset();
 }
 
 }  // namespace simple_car_controller

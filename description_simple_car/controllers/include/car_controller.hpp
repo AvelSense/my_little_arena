@@ -11,7 +11,7 @@
 #include "rclcpp_lifecycle/state.hpp"
 #include "realtime_tools/realtime_publisher.hpp"
 #include "realtime_tools/realtime_thread_safe_box.hpp"
-#include "geometry_msgs/msg/twist.hpp"
+#include "geometry_msgs/msg/twist_stamped.hpp"
 
 namespace simple_car_controller
 {
@@ -44,7 +44,7 @@ public:
   controller_interface::return_type update_reference_from_subscribers(
     const rclcpp::Time & time, const rclcpp::Duration & period) override;
 
-  controller_interface::return_type update_and_write_commands(
+controller_interface::return_type update_and_write_commands(
     const rclcpp::Time & time, const rclcpp::Duration & period) override;
 
   controller_interface::CallbackReturn on_init() override;
@@ -58,25 +58,31 @@ public:
   controller_interface::CallbackReturn on_deactivate(
     const rclcpp_lifecycle::State & previous_state) override;
 
+  void halt();
+
+  void reset();
+
+  void callback_command(CmdType::SharedPtr);
+
 protected:
   std::vector<hardware_interface::CommandInterface> on_export_reference_interfaces() override;
 
   struct WheelPropulsion
   {
-    std::reference_wrapper<const hardware_interface::LoanedStateInterface> feedback_position;
+    std::optional<std::reference_wrapper<const hardware_interface::LoanedStateInterface>> feedback_position;
     std::reference_wrapper<hardware_interface::LoanedCommandInterface> command_effort;
   };
 
   struct WheelSteering
   {
-    std::reference_wrapper<const hardware_interface::LoanedStateInterface> feedback_position;
+    std::optional<std::reference_wrapper<const hardware_interface::LoanedStateInterface>> feedback_position;
     std::reference_wrapper<hardware_interface::LoanedCommandInterface> command_position;
   };
 
-  WheelSteering steering_left_;
-  WheelSteering steering_right_;
-  WheelPropulsion propulsion_left_;
-  WheelPropulsion propulsion_right_;
+  std::optional<WheelSteering> steering_left_;
+  std::optional<WheelSteering> steering_right_;
+  std::optional<WheelPropulsion> propulsion_left_;
+  std::optional<WheelPropulsion> propulsion_right_;
 
   using Params = car_controller::Params; // defined in car_controller_parameters.hpp
   using ParamListener = car_controller::ParamListener;
@@ -94,13 +100,18 @@ protected:
   std::optional<CmdType> commands_in_; // TODO; custom message type for control input
   rclcpp::Subscription<CmdType>::SharedPtr subscriber_command_ = nullptr;
 
-  std::shared_ptr<rclcpp::Publisher<TwistStamped>> publisher_control_output_ = nullptr;
-  std::shared_ptr<realtime_tools::RealtimePublisher<TwistStamped>>
+  std::shared_ptr<rclcpp::Publisher<geometry_msgs::msg::TwistStamped>> publisher_control_output_ = nullptr;
+  std::shared_ptr<realtime_tools::RealtimePublisher<geometry_msgs::msg::TwistStamped>>
     rt_publisher_control_output_ = nullptr;
   geometry_msgs::msg::TwistStamped control_output_message_; // TODO; custom message type for control output
 
    std::vector<std::string> command_interface_names_;  
    std::vector<std::string> state_interface_names_;
+
+  bool fetch_commands_in(double&, double&);
+  bool fetch_states(double&, double&, double&, double&);
+  bool write_commands_out(const double&, const double&, const double&, const double&);
+
 };
 }  // namespace simple_car_controller
 

@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.8)
 project(description_simple_car)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  add_compile_options(-Wall -Wextra -Wpedantic -std=c++23)
+  add_compile_options(-Wall -Wextra -Wpedantic)  # warnings only, no std flag here
 endif()
 
 # list dependencies
@@ -79,6 +79,7 @@ target_link_libraries(simple_car_controller PUBLIC
                       realtime_tools::realtime_tools
                       ${std_srvs_TARGETS})
 pluginlib_export_plugin_description_file(controller_interface description_simple_car.xml)
+target_compile_features(simple_car_controller PRIVATE cxx_std_23) # Compile with C++23
 
 install(
   DIRECTORY controllers/include
