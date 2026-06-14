@@ -15,6 +15,11 @@
 
 namespace simple_car_controller
 {
+
+template <typename T> int sign(T val) {
+  return (T(0) <= val) - (val < T(0));
+}
+
 enum num_hardware_interfaces
 {
     STEERING_LEFT,
@@ -24,7 +29,7 @@ enum num_hardware_interfaces
 };
 enum num_ref_interfaces
 {
-    VELOCITY,
+    ROT_VELOCITY,
     TURNING_RADIUS,
 };
 
@@ -33,8 +38,6 @@ class CarController : public controller_interface::ChainableControllerInterface
 using CmdType = geometry_msgs::msg::TwistStamped;
 public:
   CarController();
-
-  ~CarController() = default;
 
   controller_interface::InterfaceConfiguration command_interface_configuration() const override;
 
@@ -90,20 +93,25 @@ protected:
   std::shared_ptr<ParamListener> param_listener_;
   Params params_;
 
+  // Geometry
+  double wheelbase_length_ = 0.0;
+  double rear_track_width_ = 0.0;
+  double steering_track_width_ = 0.0;
+
   // Timeout to consider commands old
-  rclcpp::Duration cmd_vel_timeout_ = rclcpp::Duration::from_seconds(0.5);
+  rclcpp::Duration command_timeout_ = rclcpp::Duration::from_seconds(0.5);
   rclcpp::Time previous_update_timestamp_{0};
 
   // realtime container for the received velocity command
   realtime_tools::RealtimeThreadSafeBox<std::optional<CmdType>> rt_box_commands_in_;
   // save the last reference in case of unable to get value from box
-  std::optional<CmdType> commands_in_; // TODO; custom message type for control input
+  std::optional<CmdType> commands_in_;
   rclcpp::Subscription<CmdType>::SharedPtr subscriber_command_ = nullptr;
 
   std::shared_ptr<rclcpp::Publisher<geometry_msgs::msg::TwistStamped>> publisher_control_output_ = nullptr;
   std::shared_ptr<realtime_tools::RealtimePublisher<geometry_msgs::msg::TwistStamped>>
     rt_publisher_control_output_ = nullptr;
-  geometry_msgs::msg::TwistStamped control_output_message_; // TODO; custom message type for control output
+  geometry_msgs::msg::TwistStamped control_output_message_;
 
    std::vector<std::string> command_interface_names_;  
    std::vector<std::string> state_interface_names_;
@@ -111,6 +119,8 @@ protected:
   bool fetch_commands_in(double&, double&);
   bool fetch_states(double&, double&, double&, double&);
   bool write_commands_out(const double&, const double&, const double&, const double&);
+
+  void try_riccati();
 
 };
 }  // namespace simple_car_controller

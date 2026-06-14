@@ -19,7 +19,8 @@ joint_state_broadcaster:
     frame_id: "body"
     use_local_topics: false
     extra_joints:
-      - joint_caster_support_to_wheel # Published for visualisation but actual state is not measured.
+      - joint_left_caster_support_to_wheel # Published for visualisation but actual state is not measured.
+      - joint_right_caster_support_to_wheel # Published for visualisation but actual state is not measured.
 
 controller_wheels:
   ros__parameters:
@@ -30,4 +31,17 @@ controller_wheels:
 controller_caster:
   ros__parameters:
     joints:
-      - joint_body_to_front_caster_support
+      - joint_body_to_front_left_caster_support
+      - joint_body_to_front_right_caster_support
+
+controller_car:
+  ros__parameters:
+    steering_left: joint_body_to_front_left_caster_support
+    steering_right: joint_body_to_front_right_caster_support
+    propulsion_left: joint_body_to_left_wheel
+    propulsion_right: joint_body_to_right_wheel
+    wheelbase_length: 0.66
+    rear_track_width: 0.6
+    steering_track_width: 0.4
+    rear_wheels_radius: 0.25
+    cmd_timeout: 0.5

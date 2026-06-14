@@ -3,14 +3,15 @@
 #include <ranges>
 #include <limits>
 #include <cmath>
-#include <cfloat>
-#include <iostream>
+
+#include "riccati_solver.hpp"
 
 #include "controller_interface/helpers.hpp" 
 #include "hardware_interface/loaned_command_interface.hpp"
 #include "hardware_interface/types/hardware_interface_type_values.hpp"
 #include "rclcpp/logging.hpp"
 #include "rclcpp/qos.hpp"
+
 
 namespace
 {  // utility, can only be accessed in this file (same as declaring static functions)
@@ -49,10 +50,13 @@ controller_interface::CallbackReturn CarController::on_configure(
 
   try
   {
-    cmd_vel_timeout_ = rclcpp::Duration::from_seconds(params_.cmd_vel_timeout);
+    command_timeout_ = rclcpp::Duration::from_seconds(params_.cmd_timeout);
+    wheelbase_length_ = params_.wheelbase_length;
+    rear_track_width_ = params_.rear_track_width;
+    steering_track_width_ = params_.steering_track_width;
 
     // Allocate reference interfaces if needed
-    const int number_ref_interfaces = 2;
+    constexpr int number_ref_interfaces = 2;
     reference_interfaces_.resize(number_ref_interfaces, std::numeric_limits<double>::quiet_NaN());
 
     state_interface_names_.push_back(params_.steering_left + '/' + hardware_interface::HW_IF_POSITION);
@@ -96,8 +100,8 @@ CarController::on_export_reference_interfaces()
 
   reference_interfaces.push_back(
     hardware_interface::CommandInterface(
-      get_node()->get_name(), "velocity",
-      &reference_interfaces_[num_ref_interfaces::VELOCITY]));
+      get_node()->get_name(), "rot_velocity",
+      &reference_interfaces_[num_ref_interfaces::ROT_VELOCITY]));
 
   reference_interfaces.push_back(
     hardware_interface::CommandInterface(
@@ -166,22 +170,20 @@ controller_interface::return_type CarController::update_reference_from_subscribe
     commands_in_ = rt_box_status.value();
   }
 
-  if (!commands_in_.has_value() || time - commands_in_.value().header.stamp > cmd_vel_timeout_)
+  if (!commands_in_.has_value() || time - commands_in_.value().header.stamp > command_timeout_)
   {
     halt(); 
     return controller_interface::return_type::OK;
   }
-  else{
-    reference_interfaces_[0] = commands_in_.value().twist.linear.x;
-    reference_interfaces_[1] = commands_in_.value().twist.angular.z;
-  }
+  reference_interfaces_[0] = commands_in_.value().twist.linear.x;
+  reference_interfaces_[1] = commands_in_.value().twist.angular.z;
   return controller_interface::return_type::OK;
 }
 
 bool CarController::fetch_commands_in(double &target_velocity, double &target_turning_radius)
 {
-  target_turning_radius = reference_interfaces_[1];
   target_velocity = reference_interfaces_[0];
+  target_turning_radius = reference_interfaces_[1];
   const bool res = (std::isfinite(target_velocity) && std::isfinite(target_turning_radius));
   if (!res){RCLCPP_ERROR(get_node()->get_logger(), "Received invalid commands.");}
   return res;
@@ -190,6 +192,7 @@ bool CarController::fetch_commands_in(double &target_velocity, double &target_tu
 bool CarController::fetch_states(double &steering_left_pos, double &steering_right_pos,
   double &propulsion_left_pos, double &propulsion_right_pos)
 {
+  RCLCPP_INFO(get_node()->get_logger(), "Entered states update");
   std::vector<double> states;
   states.reserve(4);
   const auto wheels = std::tie(steering_left_, steering_right_, propulsion_left_, propulsion_right_);
@@ -197,14 +200,13 @@ bool CarController::fetch_states(double &steering_left_pos, double &steering_rig
   bool res = true;
   std::apply([&](auto&&... wheel){([&]{
         const auto & interface = wheel.value().feedback_position.value().get();
-        auto feedback = interface.get_optional();
-        if (feedback.has_value() && std::isfinite(feedback.value()))
+        if (auto feedback = interface.get_optional(); feedback.has_value() && std::isfinite(feedback.value()))
         {
-          res = false;
           states.push_back(feedback.value());
         }
         else
         {
+          res = false;
           RCLCPP_ERROR(get_node()->get_logger(),
             "Cannot fetch valid feedback from %s", interface.get_prefix_name().c_str());
         }
@@ -235,8 +237,10 @@ bool CarController::write_commands_out(const double &steering_left, const double
 }
 
 controller_interface::return_type CarController::update_and_write_commands(
-  const rclcpp::Time & time, const rclcpp::Duration & period)
+  const rclcpp::Time & /*time*/, const rclcpp::Duration & period)
 {
+  static std::optional<std::array<double, 4>> states_prev;
+
   double target_turning_radius, target_velocity;
   if (!fetch_commands_in(target_velocity, target_turning_radius)){return controller_interface::return_type::OK;}
 
@@ -246,16 +250,67 @@ controller_interface::return_type CarController::update_and_write_commands(
 
   double steering_left = 0., steering_right = 0., propulsion_left = 0., propulsion_right = 0.;
 
+  if (states_prev.has_value())
+  {
+    const double propulsion_rot_vel = 0.5 * (propulsion_left_pos - states_prev.value().at(2) +
+      propulsion_right_pos - states_prev.value().at(3)) / period.seconds();
+    const double robot_speed = propulsion_rot_vel *0.25;
+    propulsion_left = 10 * (target_velocity - robot_speed);
+    propulsion_right = propulsion_left;
+  }
+
+  try_riccati();
+
+  // Turn left if target_turning_radius >= 0, right if < 0
+  steering_left =  std::atan(wheelbase_length_ / (target_turning_radius - 0.5*steering_track_width_));
+  steering_right =  std::atan(wheelbase_length_ / (target_turning_radius + 0.5*steering_track_width_));
+
   write_commands_out(steering_left, steering_right, propulsion_left, propulsion_right);
+
+  CmdType cmd_msg;
+  cmd_msg.header.stamp = get_node()->get_clock()->now();
+  cmd_msg.twist.linear.x = propulsion_left;
+  cmd_msg.twist.linear.y = propulsion_right;
+  cmd_msg.twist.angular.x = steering_left;
+  cmd_msg.twist.angular.y = steering_right;
+  rt_publisher_control_output_->try_publish(cmd_msg);
+
+  states_prev = {steering_left, steering_right, propulsion_left_pos, propulsion_right_pos};
   return controller_interface::return_type::OK;
+}
+
+void CarController::try_riccati()
+{
+  const uint dim_x = 4;
+  const uint dim_u = 1;
+  Eigen::MatrixXd A = Eigen::MatrixXd::Zero(dim_x, dim_x);
+  Eigen::MatrixXd B = Eigen::MatrixXd::Zero(dim_x, dim_u);
+  Eigen::MatrixXd Q = Eigen::MatrixXd::Zero(dim_x, dim_x);
+  Eigen::MatrixXd R = Eigen::MatrixXd::Zero(dim_u, dim_u);
+  Eigen::MatrixXd P = Eigen::MatrixXd::Zero(dim_x, dim_x);
+
+  A(0, 1) = 1.0;
+  A(1, 1) = -15.0;
+  A(1, 2) = 10.0;
+  A(2, 3) = 1.0;
+  A(3, 3) = -15.0;
+  B(1, 0) = 10.0;
+  B(3, 0) = 1.0;
+
+  Q(0, 0) = 1.0;
+  Q(2, 2) = 1.0;
+  Q(3, 3) = 2.0;
+
+  R(0, 0) = 1.0;
+  solveRiccatiArimotoPotter(A, B, Q, R, P);
 }
 
 void CarController::callback_command(const CmdType::SharedPtr msg)
 {
   const auto current_time_diff = get_node()->now() - msg->header.stamp;
   if (
-    cmd_vel_timeout_ == rclcpp::Duration::from_seconds(0.0) ||
-    current_time_diff < cmd_vel_timeout_)
+    command_timeout_ == rclcpp::Duration::from_seconds(0.0) ||
+    current_time_diff < command_timeout_)
   {
     rt_box_commands_in_.set(*msg);
   }
@@ -266,7 +321,7 @@ void CarController::callback_command(const CmdType::SharedPtr msg)
       "Ignoring the received message (timestamp %.10f) because it is older than "
       "the current time by %.10f seconds, which exceeds the allowed timeout (%.4f)",
       rclcpp::Time(msg->header.stamp).seconds(), current_time_diff.seconds(),
-      cmd_vel_timeout_.seconds());
+      command_timeout_.seconds());
   }
 }
 

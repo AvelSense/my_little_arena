@@ -32,25 +32,43 @@ car_controller:
       read_only: true,
     }
 
-  steering_wheels_separation: {
-    type: double,
-    default_value: 0.0,
-    description: "Shortest distance between the left and right wheels. If this parameter is wrong, the steering wheels will not be positioned correctly in turns.",
-    validation: {
-      gt<>: [0.0]
+  wheelbase_length:
+    {
+      type: double,
+      default_value: 0.0,
+      description: "Distance between front and rear wheels. For details see: https://en.wikipedia.org/wiki/Wheelbase",
+      read_only: false,
+      validation: {
+        gt<>: [0.0]
+      }
     }
-  }
-  
-  propulsion_wheels_radius: {
+
+  rear_track_width:
+    {
+      type: double,
+      default_value: 0.0,
+      description: "Rear wheel track length. For details see: https://en.wikipedia.org/wiki/Wheelbase",
+      read_only: false,
+    }
+
+  steering_track_width:
+    {
+      type: double,
+      default_value: 0.0,
+      description: "Rear wheel track length. For details see: https://en.wikipedia.org/wiki/Wheelbase",
+      read_only: false,
+    }
+
+  rear_wheels_radius: {
     type: double,
     default_value: 0.0,
-    description: "Radius of a wheel, i.e., wheels size, used for transformation of linear velocity into wheel rotations. If this parameter is wrong the robot will move faster or slower than expected.",
+    description: "Radius of a wheel, used for transformation of linear velocity into wheel rotations. If this parameter is wrong the robot will move faster or slower than expected.",
     validation: {
       gt<>: [0.0]
     }
   }
 
-  cmd_vel_timeout: {
+  cmd_timeout: {
     type: double,
     default_value: 0.5, # seconds
     description: "Timeout in seconds, after which input command on ``cmd_vel`` topic is considered staled.",

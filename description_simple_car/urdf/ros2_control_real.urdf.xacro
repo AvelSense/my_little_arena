@@ -49,7 +49,23 @@
         <param name="pwm_neutral">1500</param>
     </hardware>
 
-    <joint name="joint_body_to_front_caster_support">
+    <joint name="joint_body_to_front_left_caster_support">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+    </joint>
+  </ros2_control>
+
+  <ros2_control name="front_caster" type="actuator">
+    <hardware>
+      <plugin>simple_hardware_interfaces/PwmServoActuator</plugin>
+      <param name="angle_min">${-30*pi/180}</param>
+      <param name="angle_max">${30*pi/180}</param>
+      <param name="pwm_min">1300</param>
+      <param name="pwm_max">1700</param>
+      <param name="pwm_neutral">1500</param>
+    </hardware>
+
+    <joint name="joint_body_to_front_right_caster_support">
       <command_interface name="position"/>
       <state_interface name="position"/>
     </joint>

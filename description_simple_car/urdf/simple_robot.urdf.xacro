@@ -91,19 +91,21 @@
   </link>
 
   <!-- ///////////////////////////////////////////////////////////////// -->
-  <!-- ////////               FRONT CASTER                     ///////// -->
+  <!-- ////////               FRONT CASTERS                    ///////// -->
   <!-- ///////////////////////////////////////////////////////////////// -->
 
+  <!-- /////////////////////   Left Caster  //////////////////////////// -->
+
   <!-- ///////////////////   Actuated support  ///////////////////////// -->
-  <joint name="joint_body_to_front_caster_support" type="revolute">
+  <joint name="joint_body_to_front_left_caster_support" type="revolute">
     <parent link="body"/>
-    <child link="front_caster_support"/>
-    <origin xyz="${body_length/3} 0 ${-body_height/2}" rpy="0 0 0"/>
+    <child link="front_left_caster_support"/>
+    <origin xyz="${body_length/3} ${body_width/3} ${-body_height/2}" rpy="0 0 0"/>
     <axis xyz="0 0 1"/>
-    <limit effort="1000.0" lower="${-pi/4}" upper="${pi/4}" velocity="0.5"/>
+    <limit effort="1000.0" lower="${-pi}" upper="${pi}" velocity="0.5"/>
   </joint>
 
-  <link name="front_caster_support">
+  <link name="front_left_caster_support">
     <xacro:simple_shape color="blue" mass="0.1">
       <origin xyz="0 0 ${-caster_support_length/2}" rpy="0 0 0"/>
       <cylinder length="${caster_support_length}" radius="${caster_support_diameter/2}"/>
@@ -112,14 +114,49 @@
   </link>
 
   <!-- ///////////////////     Free Wheel     ////////////////////////// -->
-  <joint name="joint_caster_support_to_wheel" type="continuous">
-    <parent link="front_caster_support"/>
-    <child link="wheel_caster"/>
+  <joint name="joint_left_caster_support_to_wheel" type="continuous">
+    <parent link="front_left_caster_support"/>
+    <child link="wheel_caster_left"/>
     <origin xyz="0 0 ${-caster_support_length -caster_diameter/2}" rpy="0 0 0"/>
     <axis xyz="0 1 0"/>
   </joint>
 
-  <link name="wheel_caster">
+  <link name="wheel_caster_left">
+    <xacro:simple_shape color="blue" mass="0.1" mu="0.8" kp="200" kd="200">
+      <origin xyz="0 0 0" rpy="${-pi/2} 0 0"/>
+      <cylinder length="${caster_length}" radius="${caster_diameter/2}"/>
+      <xacro:inertial_null mass="0.1"/>
+    </xacro:simple_shape>
+  </link>
+
+  <!-- /////////////////////   Right Caster  //////////////////////////// -->
+
+  <!-- ///////////////////   Actuated support  ///////////////////////// -->
+  <joint name="joint_body_to_front_right_caster_support" type="revolute">
+    <parent link="body"/>
+    <child link="front_right_caster_support"/>
+    <origin xyz="${body_length/3} ${-body_width/3} ${-body_height/2}" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="1000.0" lower="${-pi}" upper="${pi}" velocity="0.5"/>
+  </joint>
+
+  <link name="front_right_caster_support">
+    <xacro:simple_shape color="blue" mass="0.1">
+      <origin xyz="0 0 ${-caster_support_length/2}" rpy="0 0 0"/>
+      <cylinder length="${caster_support_length}" radius="${caster_support_diameter/2}"/>
+      <xacro:inertial_null mass="0.1"/>
+    </xacro:simple_shape>
+  </link>
+
+  <!-- ///////////////////     Free Wheel     ////////////////////////// -->
+  <joint name="joint_right_caster_support_to_wheel" type="continuous">
+    <parent link="front_right_caster_support"/>
+    <child link="wheel_caster_right"/>
+    <origin xyz="0 0 ${-caster_support_length -caster_diameter/2}" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+
+  <link name="wheel_caster_right">
     <xacro:simple_shape color="blue" mass="0.1" mu="0.8" kp="200" kd="200">
       <origin xyz="0 0 0" rpy="${-pi/2} 0 0"/>
       <cylinder length="${caster_length}" radius="${caster_diameter/2}"/>

@@ -8,14 +8,7 @@ from launch.conditions import IfCondition, UnlessCondition
 
 from launch_ros.actions import Node
 
-# ros2 topic pub /controller_caster/commands std_msgs/msg/Float64MultiArray "data:
-# - 0.5
-# "
-
-# ros2 topic pub /controller_wheels/commands std_msgs/msg/Float64MultiArray "data:
-# - 0.5
-# - -0.5
-# "
+# ros2 topic pub /controller_car/commands geometry_msgs/msg/TwistStamped "{header: auto, twist: {linear: {x: 0.1, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}}"
 
 def generate_launch_description():
     ld = LaunchDescription()
@@ -151,6 +144,17 @@ def generate_launch_description():
         OnProcessExit(target_action=spawner_robot_sim, on_exit=[spawner_jsb]))
     ld.add_action(controls_wait_for_robot)
 
+    spawner_controller_car = Node(
+        package="controller_manager",
+        executable="spawner",
+        arguments=["controller_car", "--controller-manager", "/controller_manager"],
+    )
+    # Wait for joint_state_broadcaster to be spawned, then start controllers
+    controllers_wait_for_jsb = RegisterEventHandler(
+        OnProcessExit(target_action=spawner_jsb,
+                      on_exit=[spawner_controller_car]))
+    ld.add_action(controllers_wait_for_jsb)
+
     spawner_controller_wheels = Node(
         package="controller_manager",
         executable="spawner",
@@ -163,10 +167,10 @@ def generate_launch_description():
         arguments=["controller_caster", "--controller-manager", "/controller_manager"],
     )
     # Wait for joint_state_broadcaster to be spawned, then start controllers
-    controllers_wait_for_jsb = RegisterEventHandler(
-        OnProcessExit(target_action=spawner_jsb,
-                      on_exit=[spawner_controller_wheels, spawner_controller_caster]))
-    ld.add_action(controllers_wait_for_jsb)
+    controllers_wait_for_controller_car = RegisterEventHandler(
+        OnProcessExit(target_action=spawner_controller_car,
+                      on_exit=[ spawner_controller_wheels, spawner_controller_caster]))
+    ld.add_action(controllers_wait_for_controller_car)
 
     ##############################################################################################
     ##################                     Visualisation                     #####################

@@ -12,7 +12,11 @@
       <command_interface name="effort"/>
       <state_interface name="position"/>
     </joint>
-    <joint name="joint_body_to_front_caster_support">
+    <joint name="joint_body_to_front_left_caster_support">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+    </joint>
+    <joint name="joint_body_to_front_right_caster_support">
       <command_interface name="position"/>
       <state_interface name="position"/>
     </joint>
