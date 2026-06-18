@@ -88,15 +88,13 @@ class Viewer2D(Node):
                 ),
             )
 
-        if not robot_pos_snapshot:
-            return
-
-        cam_pos = robot_pos_snapshot[sorted(robot_pos_snapshot.keys())[0]]
-        if self.auto_follow:
-            self.ax.set(
-                xlim=(cam_pos[0] + self.x_lims[0], cam_pos[0] + self.x_lims[1]),
-                ylim=(cam_pos[1] + self.y_lims[0], cam_pos[1] + self.y_lims[1]),
-            )
+        if robot_pos_snapshot:
+            cam_pos = robot_pos_snapshot[sorted(robot_pos_snapshot.keys())[0]]
+            if self.auto_follow:
+                self.ax.set(
+                    xlim=(cam_pos[0] + self.x_lims[0], cam_pos[0] + self.x_lims[1]),
+                    ylim=(cam_pos[1] + self.y_lims[0], cam_pos[1] + self.y_lims[1]),
+                )
         self.ax.set_aspect("equal", adjustable="box")
         self.ax.grid(True)
         self.ax.set_xlabel("X")

@@ -15,7 +15,7 @@ setup(
     zip_safe=True,
     maintainer='matth',
     maintainer_email='223842537+AvelSense@users.noreply.github.com',
-    description='TODO: Package description',
+    description='2D visualisation tool for testing observers and controllers',
     license='Apache-2.0',
     extras_require={
         'test': [
@@ -24,7 +24,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'viewer = arena_2d.arena:main',
+            'viewer = arena_2d.viewer:main',
         ],
     },
 )
