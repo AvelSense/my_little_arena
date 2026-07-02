@@ -7,7 +7,9 @@
   <maintainer email="223842537+AvelSense@users.noreply.github.com">matth</maintainer>
   <license>Apache-2.0</license>
 
-  <exec_depend>rclpy</exec_depend>
+  <depend>rclpy</depend>
+  <depend>rcl_interfaces</depend>
+
   <exec_depend>geometry_msgs</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
